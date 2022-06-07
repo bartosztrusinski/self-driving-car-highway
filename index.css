@@ -8,4 +8,5 @@ body {
 
 #canvas {
   background-color: rgb(207, 207, 207);
+  outline: none;
 }
