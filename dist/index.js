@@ -9,10 +9,11 @@ var ctx = canvas.getContext("2d");
 if (!ctx) {
     throw new Error("Canvas context not found");
 }
-var car = new Car(100, 100, 30, 50);
+var car = new Car(100, 300, 30, 50);
 animate();
 function animate() {
+    canvas.height = window.innerHeight;
+    car.updatePosition();
     car.draw(ctx);
-    car.move();
     requestAnimationFrame(animate);
 }
