@@ -23,6 +23,9 @@ var Car = /** @class */ (function () {
             right: false,
         };
     }
+    Car.prototype.getCoords = function () {
+        return { x: this.x, y: this.y };
+    };
     Car.prototype.draw = function (ctx) {
         ctx.save();
         ctx.translate(this.x, this.y);

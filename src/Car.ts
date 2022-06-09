@@ -5,7 +5,6 @@ interface Directions {
   right: boolean;
   [key: string]: boolean;
 }
-
 class Car {
   private isMoving: Directions;
   private controls: Controls;
@@ -42,6 +41,10 @@ class Car {
       left: false,
       right: false,
     };
+  }
+
+  public getCoords(): Coords {
+    return { x: this.x, y: this.y };
   }
 
   public draw(ctx: CanvasRenderingContext2D) {
