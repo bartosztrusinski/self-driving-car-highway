@@ -1,48 +1,50 @@
 "use strict";
-var Road = /** @class */ (function () {
-    function Road(horizontalCenter, width, laneCount) {
-        if (laneCount === void 0) { laneCount = 3; }
+class Road {
+    constructor(horizontalCenter, width, laneCount = 3) {
         this.width = width;
         this.laneCount = laneCount;
-        this.infinity = 1000000;
+        const infinity = 1000000;
+        this.top = -infinity;
+        this.bottom = infinity;
         this.left = horizontalCenter - width / 2;
         this.right = horizontalCenter + width / 2;
-        this.top = -this.infinity;
-        this.bottom = this.infinity;
         this.laneCount = laneCount;
-        var leftBorder = {
+        const leftBorder = {
             start: { x: this.left, y: this.top },
             end: { x: this.left, y: this.bottom },
         };
-        var bottomBorder = {
+        const bottomBorder = {
             start: { x: this.right, y: this.top },
             end: { x: this.right, y: this.bottom },
         };
         this.borders = [leftBorder, bottomBorder];
     }
-    Road.prototype.getLaneCenter = function (laneIndex) {
+    getLaneCenter(laneIndex) {
         laneIndex = clamp(laneIndex, 0, this.laneCount - 1);
-        var laneWidth = this.width / this.laneCount;
+        const laneWidth = this.width / this.laneCount;
         return (linearInterpolation(this.left, this.right, laneIndex / this.laneCount) +
             laneWidth / 2);
-    };
-    Road.prototype.draw = function (ctx) {
+    }
+    getBorders() {
+        return this.borders;
+    }
+    draw(ctx) {
         ctx.lineWidth = 4;
         ctx.strokeStyle = "white";
-        this.borders.forEach(function (border) {
+        ctx.setLineDash([40, 40]);
+        for (let i = 1; i < this.laneCount; i++) {
+            const linePosition = linearInterpolation(this.left, this.right, i / this.laneCount);
+            ctx.beginPath();
+            ctx.moveTo(linePosition, this.bottom);
+            ctx.lineTo(linePosition, this.top);
+            ctx.stroke();
+        }
+        ctx.setLineDash([]);
+        this.borders.forEach((border) => {
             ctx.beginPath();
             ctx.moveTo(border.start.x, border.start.y);
             ctx.lineTo(border.end.x, border.end.y);
             ctx.stroke();
         });
-        for (var i = 1; i < this.laneCount; i++) {
-            var linePosition = linearInterpolation(this.left, this.right, i / this.laneCount);
-            ctx.beginPath();
-            ctx.setLineDash([20, 25]);
-            ctx.moveTo(linePosition, this.bottom);
-            ctx.lineTo(linePosition, this.top);
-            ctx.stroke();
-        }
-    };
-    return Road;
-}());
+    }
+}

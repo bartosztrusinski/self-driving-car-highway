@@ -1,29 +1,27 @@
 "use strict";
-var Controls = /** @class */ (function () {
-    function Controls() {
+class Controls {
+    constructor() {
         this.keyboard = {};
         this.enableKeyboard();
     }
-    Controls.prototype.enableKeyboard = function () {
-        var _this = this;
-        document.addEventListener("keydown", function (e) {
-            _this.keyboard[e.key] = true;
+    enableKeyboard() {
+        document.addEventListener("keydown", (e) => {
+            this.keyboard[e.key] = true;
         });
-        document.addEventListener("keyup", function (e) {
-            _this.keyboard[e.key] = false;
+        document.addEventListener("keyup", (e) => {
+            this.keyboard[e.key] = false;
         });
-    };
-    Controls.prototype.isUpPressed = function () {
+    }
+    isUpPressed() {
         return this.keyboard["w"] || this.keyboard["ArrowUp"];
-    };
-    Controls.prototype.isDownPressed = function () {
+    }
+    isDownPressed() {
         return this.keyboard["s"] || this.keyboard["ArrowDown"];
-    };
-    Controls.prototype.isLeftPressed = function () {
+    }
+    isLeftPressed() {
         return this.keyboard["a"] || this.keyboard["ArrowLeft"];
-    };
-    Controls.prototype.isRightPressed = function () {
+    }
+    isRightPressed() {
         return this.keyboard["d"] || this.keyboard["ArrowRight"];
-    };
-    return Controls;
-}());
+    }
+}

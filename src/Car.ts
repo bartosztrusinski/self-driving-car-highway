@@ -3,64 +3,140 @@ interface Directions {
   backwards: boolean;
   left: boolean;
   right: boolean;
-  [key: string]: boolean;
 }
 class Car {
-  private isMoving: Directions;
-  private controls: Controls;
-  private acceleration: number;
-  private speed: number;
-  private maxSpeed: number;
-  private angle: number;
-  private rotationSpeed: number;
-  private friction: number;
+  private isMoving: Directions = {
+    forward: false,
+    backwards: false,
+    left: false,
+    right: false,
+  };
+  private controls: Controls | null = null;
+  private sensor: Sensor | null = null;
+  private speed = 0;
+  private maxSpeed = 1;
+  private acceleration = 0.1;
+  private friction = 0.05;
+  private angle = 0;
+  private rotationSpeed = 0.01;
+  private width = 60;
+  private height = 100;
+  private isDamaged = false;
+  private polygon: Line[] = [];
 
   constructor(
     private x: number,
     private y: number,
-    private width: number,
-    private height: number
+    private color: string,
+    type: String
   ) {
     this.x = x;
     this.y = y;
-    this.width = width;
-    this.height = height;
+    this.color = color;
 
-    this.speed = 0;
-    this.acceleration = 0.11;
-    this.maxSpeed = 2.2;
-    this.friction = 0.04;
-    this.angle = 0.0;
-    this.rotationSpeed = 0.02;
-
-    this.controls = new Controls();
-
-    this.isMoving = {
-      forward: false,
-      backwards: false,
-      left: false,
-      right: false,
-    };
+    if (type === "traffic") {
+      this.initTrafficCar();
+    } else if (type === "controls") {
+      this.initControlsCar();
+    }
   }
 
-  public getCoords(): Coords {
+  private initTrafficCar() {
+    this.maxSpeed = 2;
+    this.controls = null;
+    this.sensor = null;
+  }
+
+  private initControlsCar() {
+    this.maxSpeed = 5;
+    this.controls = new Controls();
+    this.sensor = new Sensor(this.getCoords(), this.angle, Math.PI / 2, 5, 300);
+  }
+
+  public getCoords(): Point {
     return { x: this.x, y: this.y };
   }
 
-  public draw(ctx: CanvasRenderingContext2D) {
-    ctx.save();
-
-    ctx.translate(this.x, this.y);
-    ctx.rotate(-this.angle);
-
-    ctx.fillStyle = "red";
-    ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
-
-    ctx.restore();
+  public getPolygon() {
+    return this.polygon;
   }
 
-  public updatePosition() {
-    this.updateMovingDirection();
+  public draw(ctx: CanvasRenderingContext2D, obstacles: Line[]) {
+    if (this.isDamaged) {
+      ctx.fillStyle = "gray";
+    } else {
+      ctx.fillStyle = this.color;
+    }
+
+    ctx.beginPath();
+    ctx.moveTo(this.polygon[0].start.x, this.polygon[0].start.y);
+    for (let i = 1; i < this.polygon.length; i++) {
+      ctx.lineTo(this.polygon[i].start.x, this.polygon[i].start.y);
+    }
+    ctx.closePath();
+    ctx.fill();
+
+    if (this.sensor) this.sensor.draw(ctx, obstacles);
+  }
+
+  public update(obstacles: Line[]) {
+    if (!this.isDamaged) {
+      this.createPolygon();
+      this.assessDamage(this.polygon, obstacles);
+      this.move();
+    }
+    if (this.sensor) this.sensor.updateOrigin(this.getCoords(), this.angle);
+  }
+
+  public createPolygon() {
+    const radius = Math.hypot(this.width, this.height) / 2;
+    const angle = Math.atan2(this.width, this.height);
+
+    const topLeft: Point = {
+      x: this.x - radius * Math.sin(this.angle + angle),
+      y: this.y - radius * Math.cos(this.angle + angle),
+    };
+    const topRight: Point = {
+      x: this.x - radius * Math.sin(this.angle - angle),
+      y: this.y - radius * Math.cos(this.angle - angle),
+    };
+    const bottomLeft: Point = {
+      x: this.x - radius * Math.sin(Math.PI + this.angle - angle),
+      y: this.y - radius * Math.cos(Math.PI + this.angle - angle),
+    };
+    const bottomRight: Point = {
+      x: this.x - radius * Math.sin(Math.PI + this.angle + angle),
+      y: this.y - radius * Math.cos(Math.PI + this.angle + angle),
+    };
+
+    const topLine = {
+      start: topLeft,
+      end: topRight,
+    };
+
+    this.polygon = [
+      topLine,
+      { start: topRight, end: bottomRight },
+      { start: bottomRight, end: bottomLeft },
+      { start: bottomLeft, end: topLeft },
+    ];
+
+    // return polygon;
+  }
+
+  private assessDamage(polygon: Line[], borders: Line[]) {
+    if (polysIntersect(polygon, borders)) {
+      this.isDamaged = true;
+      return;
+    }
+  }
+
+  private move() {
+    if (!this.controls) {
+      this.isMoving.forward = true;
+    } else {
+      this.updateMovingDirection();
+    }
     this.applyAcceleration();
     this.applySpeedLimits();
     this.applyFriction();
@@ -70,10 +146,12 @@ class Car {
   }
 
   private updateMovingDirection() {
-    this.isMoving.forward = this.controls.isUpPressed();
-    this.isMoving.backwards = this.controls.isDownPressed();
-    this.isMoving.left = this.controls.isLeftPressed();
-    this.isMoving.right = this.controls.isRightPressed();
+    if (this.controls) {
+      this.isMoving.forward = this.controls.isUpPressed();
+      this.isMoving.backwards = this.controls.isDownPressed();
+      this.isMoving.left = this.controls.isLeftPressed();
+      this.isMoving.right = this.controls.isRightPressed();
+    }
   }
 
   private applyAcceleration() {
