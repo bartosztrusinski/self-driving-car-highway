@@ -12,6 +12,7 @@ class Car {
         };
         this.controls = null;
         this.sensor = null;
+        this.brain = null;
         this.speed = 0;
         this.maxSpeed = 1;
         this.acceleration = 0.1;
@@ -25,11 +26,16 @@ class Car {
         this.x = x;
         this.y = y;
         this.color = color;
-        if (type === "traffic") {
-            this.initTrafficCar();
-        }
-        else if (type === "controls") {
-            this.initControlsCar();
+        switch (type) {
+            case "traffic":
+                this.initTrafficCar();
+                break;
+            case "controls":
+                this.initControlsCar();
+                break;
+            case "ai":
+                this.initAICar();
+                break;
         }
     }
     initTrafficCar() {
@@ -42,13 +48,19 @@ class Car {
         this.controls = new Controls();
         this.sensor = new Sensor(this.getCoords(), this.angle, Math.PI / 2, 5, 300);
     }
+    initAICar() {
+        this.maxSpeed = 2.5;
+        this.controls = new Controls();
+        this.sensor = new Sensor(this.getCoords(), this.angle, Math.PI / 2, 5, 250);
+        this.brain = new NeuralNetwork([5, 6, 4]);
+    }
     getCoords() {
         return { x: this.x, y: this.y };
     }
     getPolygon() {
         return this.polygon;
     }
-    draw(ctx, obstacles) {
+    draw(ctx, drawSensor = false) {
         if (this.isDamaged) {
             ctx.fillStyle = "gray";
         }
@@ -62,8 +74,8 @@ class Car {
         }
         ctx.closePath();
         ctx.fill();
-        if (this.sensor)
-            this.sensor.draw(ctx, obstacles);
+        if (this.sensor && drawSensor)
+            this.sensor.draw(ctx);
     }
     update(obstacles) {
         if (!this.isDamaged) {
@@ -71,8 +83,13 @@ class Car {
             this.assessDamage(this.polygon, obstacles);
             this.move();
         }
-        if (this.sensor)
-            this.sensor.updateOrigin(this.getCoords(), this.angle);
+        if (this.sensor) {
+            this.sensor.update(this.getCoords(), this.angle, obstacles);
+            if (this.brain) {
+                const offsets = this.sensor.readings.map((r) => r === null ? 0 : 1 - r.offset);
+                NeuralNetwork.feedForward(offsets, this.brain);
+            }
+        }
     }
     createPolygon() {
         const radius = Math.hypot(this.width, this.height) / 2;
@@ -127,10 +144,18 @@ class Car {
     }
     updateMovingDirection() {
         if (this.controls) {
-            this.isMoving.forward = this.controls.isUpPressed();
-            this.isMoving.backwards = this.controls.isDownPressed();
-            this.isMoving.left = this.controls.isLeftPressed();
-            this.isMoving.right = this.controls.isRightPressed();
+            if (this.brain) {
+                this.isMoving.forward = this.brain.outputs[0];
+                this.isMoving.backwards = this.brain.outputs[1];
+                this.isMoving.left = this.brain.outputs[2];
+                this.isMoving.right = this.brain.outputs[3];
+            }
+            else {
+                this.isMoving.forward = this.controls.isUpPressed();
+                this.isMoving.backwards = this.controls.isDownPressed();
+                this.isMoving.left = this.controls.isLeftPressed();
+                this.isMoving.right = this.controls.isRightPressed();
+            }
         }
     }
     applyAcceleration() {

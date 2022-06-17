@@ -7,7 +7,7 @@ interface Reading {
 class Sensor {
   private rayOrigin: { x: number; y: number; angle: number };
   private rays: Line[];
-  private readings: Reading[];
+  public readings: (Reading | null)[];
 
   constructor(
     coords: Point,
@@ -25,24 +25,28 @@ class Sensor {
   }
 
   private getClosestReading(ray: Line, obstacles: Line[]) {
-    this.readings = [];
+    const touches = [];
     for (let obstacle of obstacles) {
-      const reading = getIntersection(
+      const touch = getIntersection(
         ray.start,
         ray.end,
         obstacle.start,
         obstacle.end
       );
-      if (reading) {
-        this.readings.push(reading);
+      if (touch) {
+        touches.push(touch);
       }
     }
-    if (this.readings.length === 0) {
+    if (touches.length === 0) {
       return null;
     }
-    const offsets = this.readings.map((reading) => reading.offset);
+    const offsets = touches.map((touch) => touch.offset);
     const minOffset = Math.min(...offsets);
-    return this.readings.find((reading) => reading.offset === minOffset);
+    const closestReading = touches.find(
+      (reading) => reading.offset === minOffset
+    );
+    if (!closestReading) return null;
+    return closestReading;
   }
 
   private castRays() {
@@ -66,18 +70,21 @@ class Sensor {
     }
   }
 
-  public updateOrigin(coords: Point, angle: number) {
+  public update(coords: Point, angle: number, obstacles: Line[]) {
     const { x, y } = coords;
     this.rayOrigin = { x, y, angle };
     this.castRays();
+    this.readings = [];
+    for (let ray of this.rays) {
+      this.readings.push(this.getClosestReading(ray, obstacles));
+    }
   }
 
-  public draw(ctx: CanvasRenderingContext2D, obstacles: Line[]) {
+  public draw(ctx: CanvasRenderingContext2D) {
     this.rays.forEach((ray, i) => {
-      let end = this.getClosestReading(ray, obstacles);
-      if (end === null || end === undefined) {
-        end = ray.end;
-      }
+      const end = this.readings[i]
+        ? { x: this.readings[i]!.x, y: this.readings[i]!.y }
+        : ray.end;
 
       ctx.strokeStyle = "yellow";
       ctx.beginPath();

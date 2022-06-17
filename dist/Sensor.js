@@ -12,19 +12,22 @@ class Sensor {
         this.rays = [];
     }
     getClosestReading(ray, obstacles) {
-        this.readings = [];
+        const touches = [];
         for (let obstacle of obstacles) {
-            const reading = getIntersection(ray.start, ray.end, obstacle.start, obstacle.end);
-            if (reading) {
-                this.readings.push(reading);
+            const touch = getIntersection(ray.start, ray.end, obstacle.start, obstacle.end);
+            if (touch) {
+                touches.push(touch);
             }
         }
-        if (this.readings.length === 0) {
+        if (touches.length === 0) {
             return null;
         }
-        const offsets = this.readings.map((reading) => reading.offset);
+        const offsets = touches.map((touch) => touch.offset);
         const minOffset = Math.min(...offsets);
-        return this.readings.find((reading) => reading.offset === minOffset);
+        const closestReading = touches.find((reading) => reading.offset === minOffset);
+        if (!closestReading)
+            return null;
+        return closestReading;
     }
     castRays() {
         const start = { x: this.rayOrigin.x, y: this.rayOrigin.y };
@@ -39,17 +42,20 @@ class Sensor {
             this.rays.push({ start, end });
         }
     }
-    updateOrigin(coords, angle) {
+    update(coords, angle, obstacles) {
         const { x, y } = coords;
         this.rayOrigin = { x, y, angle };
         this.castRays();
+        this.readings = [];
+        for (let ray of this.rays) {
+            this.readings.push(this.getClosestReading(ray, obstacles));
+        }
     }
-    draw(ctx, obstacles) {
+    draw(ctx) {
         this.rays.forEach((ray, i) => {
-            let end = this.getClosestReading(ray, obstacles);
-            if (end === null || end === undefined) {
-                end = ray.end;
-            }
+            const end = this.readings[i]
+                ? { x: this.readings[i].x, y: this.readings[i].y }
+                : ray.end;
             ctx.strokeStyle = "yellow";
             ctx.beginPath();
             ctx.moveTo(ray.start.x, ray.start.y);
