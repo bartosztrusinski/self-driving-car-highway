@@ -3,12 +3,13 @@ class Road {
   private right: number;
   private top: number;
   private bottom: number;
-  private borders: Line[];
+  public borders: Line[] = [];
+  public lines: Line[] = [];
 
   constructor(
     horizontalCenter: number,
     private width: number,
-    private laneCount = 3
+    private laneCount: number
   ) {
     const infinity = 1000000;
     this.top = -infinity;
@@ -17,16 +18,12 @@ class Road {
     this.right = horizontalCenter + width / 2;
     this.laneCount = laneCount;
 
-    const leftBorder: Line = {
-      start: { x: this.left, y: this.top },
-      end: { x: this.left, y: this.bottom },
-    };
-    const bottomBorder: Line = {
-      start: { x: this.right, y: this.top },
-      end: { x: this.right, y: this.bottom },
-    };
+    this.setBorders();
+    this.setLines();
+  }
 
-    this.borders = [leftBorder, bottomBorder];
+  public getLaneCount() {
+    return this.laneCount;
   }
 
   public getLaneCenter(laneIndex: number) {
@@ -39,33 +36,27 @@ class Road {
     );
   }
 
-  public getBorders() {
-    return this.borders;
+  private setBorders() {
+    const leftBorder: Line = {
+      start: { x: this.left, y: this.top },
+      end: { x: this.left, y: this.bottom },
+    };
+    const bottomBorder: Line = {
+      start: { x: this.right, y: this.top },
+      end: { x: this.right, y: this.bottom },
+    };
+
+    this.borders = [leftBorder, bottomBorder];
   }
 
-  public draw(ctx: CanvasRenderingContext2D) {
-    ctx.lineWidth = 4;
-    ctx.strokeStyle = "white";
-
-    ctx.setLineDash([40, 40]);
+  private setLines() {
+    this.lines = [];
     for (let i = 1; i < this.laneCount; i++) {
-      const linePosition = linearInterpolation(
-        this.left,
-        this.right,
-        i / this.laneCount
-      );
-      ctx.beginPath();
-      ctx.moveTo(linePosition, this.bottom);
-      ctx.lineTo(linePosition, this.top);
-      ctx.stroke();
+      const x = linearInterpolation(this.left, this.right, i / this.laneCount);
+      this.lines.push({
+        start: { x, y: this.bottom },
+        end: { x, y: this.top },
+      });
     }
-
-    ctx.setLineDash([]);
-    this.borders.forEach((border) => {
-      ctx.beginPath();
-      ctx.moveTo(border.start.x, border.start.y);
-      ctx.lineTo(border.end.x, border.end.y);
-      ctx.stroke();
-    });
   }
 }

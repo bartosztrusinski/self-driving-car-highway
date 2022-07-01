@@ -1,88 +1,203 @@
-const canvas: HTMLCanvasElement = document.querySelector("#canvas");
-const saveBtn = document.querySelector("#save");
-const discardBtn = document.querySelector("#discard");
-if (!canvas || !saveBtn || !discardBtn) {
-  throw new Error("Canvas or buttons not found");
-}
-const ctx = canvas.getContext("2d");
-if (!ctx) {
-  throw new Error("Canvas context not found");
-}
-canvas.width = 400;
-canvas.height = window.innerHeight;
-const road = new Road(canvas.width / 2, canvas.width * 0.9);
-const N = 500;
-const cars = createCars(N);
-let bestCar = cars[0];
+class CanvasSimulation {
+  saveBtn = document.querySelector("#save") as HTMLButtonElement;
+  discardBtn = document.querySelector("#discard") as HTMLButtonElement;
 
-const brain = localStorage.getItem("bestBrain");
-if (brain) {
-  for (let car of cars) {
-    car.brain = JSON.parse(brain);
-    NeuralNetwork.mutate(car.brain!, 0.1);
-  }
-}
-saveBtn!.addEventListener("click", () => {
-  if (bestCar.brain) saveBrain(bestCar.brain);
-});
+  canvas = document.querySelector("#canvas") as HTMLCanvasElement;
+  ctx = this.canvas.getContext("2d") as CanvasRenderingContext2D;
 
-discardBtn!.addEventListener("click", () => {
-  discardBrain();
-});
+  road!: Road;
+  traffic: TrafficCar[] = [];
+  aiCars: AICar[] = [];
+  bestCar: AICar | null = null;
+  keyboardCar: KeyboardCar | null = null;
+  obstacles: Line[] = [];
+  levelHeight = 400;
+  trafficColors = [
+    "cornsilk",
+    "cadetblue",
+    "coral",
+    "rebeccapurple",
+    "steelblue",
+    "mediumaquamarine",
+    "paleturquoise",
+  ];
+  roadRenderer = new RoadRenderer(this.ctx);
+  carRenderer = new CarRenderer(this.ctx);
+  sensorRenderer = new SensorRenderer(this.ctx);
 
-function saveBrain(brain: NeuralNetwork) {
-  localStorage.setItem("bestBrain", JSON.stringify(brain));
-}
-
-function discardBrain() {
-  localStorage.removeItem("bestBrain");
-}
-
-function createCars(num: number) {
-  const cars = [];
-  for (let i = 0; i < num; i++) {
-    cars.push(new Car(road.getLaneCenter(1), 0, "red", "ai"));
-  }
-  return cars;
-}
-
-const traffic = [
-  new Car(road.getLaneCenter(1), -400, "blue", "traffic"),
-  new Car(road.getLaneCenter(0), -800, "green", "traffic"),
-  new Car(road.getLaneCenter(2), -800, "green", "traffic"),
-  new Car(road.getLaneCenter(0), -1200, "blue", "traffic"),
-  new Car(road.getLaneCenter(2), -1200, "blue", "traffic"),
-  new Car(road.getLaneCenter(1), -1500, "yellow", "traffic"),
-];
-
-const animate = () => {
-  bestCar = cars.find(
-    (car) =>
-      car.getCoords().y === Math.min(...cars.map((car) => car.getCoords().y))
-  );
-
-  canvas.height = window.innerHeight;
-  ctx.translate(0, -bestCar.getCoords().y + canvas.height * 0.7);
-
-  const obstacles = [...road.getBorders()];
-  for (let trafficCar of traffic) obstacles.push(...trafficCar.getPolygon());
-
-  road.draw(ctx);
-
-  ctx.globalAlpha = 0.3;
-  for (let i = 0; i < cars.length; i++) {
-    cars[i].update(obstacles);
-    cars[i].draw(ctx);
-  }
-  ctx.globalAlpha = 1;
-  bestCar.draw(ctx, true);
-
-  for (let trafficCar of traffic) {
-    trafficCar.update([]);
-    trafficCar.draw(ctx);
+  constructor() {
+    this.canvas.height = window.innerHeight;
+    this.canvas.width = 400;
+    this.enableStorageButtons();
   }
 
-  requestAnimationFrame(animate);
-};
+  public createRoad(widthPercentage: number, lanes: number) {
+    this.road = new Road(
+      this.canvas.width / 2,
+      this.canvas.width * widthPercentage,
+      lanes
+    );
+  }
 
-animate();
+  public createKeyboardCar(lane: number, shape: Shape, color: string) {
+    this.keyboardCar = new KeyboardCar(
+      this.road.getLaneCenter(lane),
+      0,
+      color,
+      shape
+    );
+  }
+
+  public createTraffic(levelsCount: number, shape: Shape) {
+    this.traffic = [];
+
+    for (let i = 1; i <= levelsCount; i++) {
+      const laneToKeepOpen = Math.floor(
+        Math.random() * this.road.getLaneCount()
+      );
+      for (
+        let laneIndex = 0;
+        laneIndex < this.road.getLaneCount();
+        laneIndex++
+      ) {
+        if (laneIndex === laneToKeepOpen) continue;
+        this.traffic.push(
+          new TrafficCar(
+            this.road.getLaneCenter(laneIndex),
+            -i * this.levelHeight,
+            getRandomElement(this.trafficColors),
+            shape
+          )
+        );
+      }
+    }
+  }
+
+  public parallelizeAICars(
+    carsCount: number,
+    lane: number,
+    shape: Shape,
+    color: string,
+    rayCount: number
+  ) {
+    this.aiCars = [];
+    for (let i = 0; i < carsCount; i++) {
+      this.aiCars.push(
+        new AICar(this.road.getLaneCenter(lane), 0, color, shape, rayCount)
+      );
+    }
+    this.bestCar = this.aiCars[0];
+
+    this.applyBestBrainWithMutation();
+  }
+
+  private applyBestBrainWithMutation() {
+    const savedBrain = this.getBestBrain();
+    if (!savedBrain) return;
+    for (let i = 0; i < this.aiCars.length; i++) {
+      this.aiCars[i].brain = JSON.parse(savedBrain);
+      if (i > 0) NeuralNetwork.mutate(this.aiCars[i].brain, 0.1);
+    }
+  }
+
+  public animate = () => {
+    this.setCameraOnBestCar();
+    this.getObstacles();
+    this.renderRoad();
+    this.renderCarsUponUpdating();
+    requestAnimationFrame(this.animate);
+  };
+
+  private setCameraOnBestCar() {
+    this.findBestCar();
+    if (!this.bestCar) return;
+
+    this.canvas.height = window.innerHeight;
+    this.ctx.translate(0, -this.bestCar.y + this.canvas.height * 0.7);
+  }
+
+  private findBestCar() {
+    if (!this.aiCars.length) return;
+
+    this.bestCar = this.aiCars.find(
+      (car) => car.y === Math.min(...this.aiCars.map((car) => car.y))
+    )!;
+  }
+
+  private getObstacles() {
+    this.obstacles = [...this.road.borders];
+
+    if (!this.traffic.length) return;
+    for (let car of this.traffic) {
+      this.obstacles.push(...car.polygon);
+    }
+  }
+
+  private renderRoad() {
+    this.roadRenderer.render(this.road);
+  }
+
+  private renderCarsUponUpdating() {
+    if (this.traffic.length) {
+      this.traffic.forEach((car) => {
+        car.update();
+        this.carRenderer.render(car);
+      });
+    }
+
+    if (this.aiCars.length) {
+      this.aiCars.forEach((car) => {
+        car.update(this.obstacles);
+        this.ctx.globalAlpha = 0.7;
+        this.carRenderer.render(car);
+        car.sensor.disable();
+        this.sensorRenderer.render(car.sensor);
+        this.ctx.globalAlpha = 1;
+      });
+
+      if (this.bestCar) {
+        this.carRenderer.render(this.bestCar);
+        this.bestCar.sensor.enable();
+        this.sensorRenderer.render(this.bestCar.sensor);
+      }
+    }
+
+    if (this.keyboardCar) {
+      this.keyboardCar.update(this.obstacles);
+      this.carRenderer.render(this.keyboardCar);
+    }
+  }
+
+  private enableStorageButtons() {
+    this.saveBtn.addEventListener("click", () => {
+      this.saveBestBrain();
+    });
+
+    this.discardBtn.addEventListener("click", () => {
+      this.discardBestBrain();
+    });
+  }
+
+  private saveBestBrain() {
+    if (!this.bestCar) return;
+    localStorage.setItem("bestBrain", JSON.stringify(this.bestCar.brain));
+  }
+
+  private discardBestBrain() {
+    localStorage.removeItem("bestBrain");
+  }
+
+  private getBestBrain() {
+    return localStorage.getItem("bestBrain");
+  }
+}
+
+const simulation = new CanvasSimulation();
+
+const rect = new Rectangle(60, 100);
+
+simulation.createRoad(0.9, 3);
+simulation.parallelizeAICars(300, 1, rect, "red", 5);
+simulation.createTraffic(15, rect);
+simulation.createKeyboardCar(2, rect, "aquamarine");
+simulation.animate();

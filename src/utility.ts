@@ -8,6 +8,16 @@ interface Line {
   end: Point;
 }
 
+interface Animated {
+  update(arg: any): void;
+}
+
+type Polygon = Line[];
+
+function getRandomElement(arr: any[]) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
 function linearInterpolation(start: number, end: number, t: number) {
   return start + (end - start) * t;
 }
@@ -16,10 +26,16 @@ function clamp(num: number, min: number, max: number) {
   return Math.min(Math.max(num, min), max);
 }
 
-function getIntersection(A: Point, B: Point, C: Point, D: Point) {
-  const numeratorT = (D.x - C.x) * (A.y - C.y) - (D.y - C.y) * (A.x - C.x);
-  const numeratorU = (C.y - A.y) * (A.x - B.x) - (C.x - A.x) * (A.y - B.y);
-  const denominator = (D.y - C.y) * (B.x - A.x) - (D.x - C.x) * (B.y - A.y);
+function getIntersection(A: Line, B: Line) {
+  const numeratorT =
+    (B.end.x - B.start.x) * (A.start.y - B.start.y) -
+    (B.end.y - B.start.y) * (A.start.x - B.start.x);
+  const numeratorU =
+    (B.start.y - A.start.y) * (A.start.x - A.end.x) -
+    (B.start.x - A.start.x) * (A.start.y - A.end.y);
+  const denominator =
+    (B.end.y - B.start.y) * (A.end.x - A.start.x) -
+    (B.end.x - B.start.x) * (A.end.y - A.start.y);
 
   if (denominator === 0) return null;
 
@@ -29,18 +45,16 @@ function getIntersection(A: Point, B: Point, C: Point, D: Point) {
   if (t < 0 || t > 1 || u < 0 || u > 1) return null;
 
   return {
-    x: linearInterpolation(A.x, B.x, t),
-    y: linearInterpolation(A.y, B.y, t),
+    x: linearInterpolation(A.start.x, A.end.x, t),
+    y: linearInterpolation(A.start.y, A.end.y, t),
     offset: t,
   };
 }
 
-function polysIntersect(poly1: Line[], poly2: Line[]) {
-  for (let A of poly1) {
-    for (let B of poly2) {
-      if (getIntersection(A.start, A.end, B.start, B.end)) {
-        return true;
-      }
+function polysIntersect(polyA: Polygon, polyB: Polygon) {
+  for (let lineA of polyA) {
+    for (let lineB of polyB) {
+      if (getIntersection(lineA, lineB)) return true;
     }
   }
   return false;

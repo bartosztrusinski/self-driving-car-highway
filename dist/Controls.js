@@ -1,5 +1,5 @@
 "use strict";
-class Controls {
+class KeyboardControls {
     constructor() {
         this.keyboard = {};
         this.enableKeyboard();

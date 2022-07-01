@@ -1,8 +1,14 @@
-class Controls {
-  private keyboard: { [key: string]: boolean };
+interface Controls {
+  isUpPressed(): boolean;
+  isDownPressed(): boolean;
+  isLeftPressed(): boolean;
+  isRightPressed(): boolean;
+}
+
+class KeyboardControls implements Controls {
+  private keyboard: { [key: string]: boolean } = {};
 
   constructor() {
-    this.keyboard = {};
     this.enableKeyboard();
   }
 

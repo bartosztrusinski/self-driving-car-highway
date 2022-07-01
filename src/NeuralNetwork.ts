@@ -1,3 +1,5 @@
+interface NeuralNetworkInterface {}
+
 class NeuralNetwork {
   levels: Level[] = [];
   outputs: number[] = [];
@@ -45,12 +47,12 @@ class Level {
   biases: number[];
 
   constructor(inputsCount: number, outputsCount: number) {
-    this.inputs = new Array(inputsCount).fill(0);
-    this.outputs = new Array(outputsCount).fill(0);
+    this.inputs = new Array(inputsCount);
+    this.outputs = new Array(outputsCount);
     this.weights = new Array(inputsCount)
       .fill(0)
-      .map(() => new Array(outputsCount).fill(0));
-    this.biases = new Array(outputsCount).fill(0);
+      .map(() => new Array(outputsCount));
+    this.biases = new Array(outputsCount);
 
     this.setWeights();
     this.setBiases();
@@ -70,22 +72,20 @@ class Level {
     }
   }
 
-  static feedForward(inputs: number[], level: Level) {
-    // level.setInputs(inputs);
-    level.inputs = inputs;
-    // level.setOutputs();
+  private static setOutputs(level: Level) {
     for (let i = 0; i < level.outputs.length; i++) {
       let sum = 0;
       for (let j = 0; j < level.inputs.length; j++) {
         sum += level.inputs[j] * level.weights[j][i];
       }
 
-      if (sum > level.biases[i]) {
-        level.outputs[i] = 1;
-      } else {
-        level.outputs[i] = 0;
-      }
+      level.outputs[i] = sum > level.biases[i] ? 1 : 0;
     }
+  }
+
+  static feedForward(inputs: number[], level: Level) {
+    level.inputs = inputs;
+    Level.setOutputs(level);
     return level.outputs;
   }
 }

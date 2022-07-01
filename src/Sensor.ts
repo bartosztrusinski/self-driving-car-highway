@@ -4,54 +4,69 @@ interface Reading {
   offset: number;
 }
 
-class Sensor {
-  private rayOrigin: { x: number; y: number; angle: number };
-  private rays: Line[];
-  public readings: (Reading | null)[];
+interface SensorReaderInterface {
+  read(sensor: Sensor, obstacle: any): void;
+}
+
+class Sensor implements Animated {
+  public readings: (Reading | null)[] = [];
+  public rays: Line[] = [];
+  private reader = new SensorReader();
+  private enabled = false;
 
   constructor(
-    coords: Point,
-    angle: number,
     private raySpread: number,
     private rayCount: number,
-    private rayLength: number
+    private rayLength: number,
+    private origin: { x: number; y: number; angle: number }
   ) {
-    this.rayOrigin = { x: coords.x, y: coords.y, angle };
     this.raySpread = raySpread;
     this.rayCount = rayCount;
     this.rayLength = rayLength;
-    this.readings = [];
-    this.rays = [];
   }
 
-  private getClosestReading(ray: Line, obstacles: Line[]) {
-    const touches = [];
-    for (let obstacle of obstacles) {
-      const touch = getIntersection(
-        ray.start,
-        ray.end,
-        obstacle.start,
-        obstacle.end
-      );
-      if (touch) {
-        touches.push(touch);
-      }
-    }
-    if (touches.length === 0) {
-      return null;
-    }
-    const offsets = touches.map((touch) => touch.offset);
-    const minOffset = Math.min(...offsets);
-    const closestReading = touches.find(
-      (reading) => reading.offset === minOffset
+  public getOffsets() {
+    return this.readings.map((reading) =>
+      reading === null ? 1 : reading.offset
     );
-    if (!closestReading) return null;
-    return closestReading;
   }
 
-  private castRays() {
-    const start = { x: this.rayOrigin.x, y: this.rayOrigin.y };
+  public getRaysSeparatedByOffsets() {
+    const raysBefore: Line[] = [],
+      raysAfter: Line[] = [];
 
+    this.rays.forEach((ray, i) => {
+      const separationPoint = this.readings[i]
+        ? { x: this.readings[i]!.x, y: this.readings[i]!.y }
+        : ray.end;
+
+      raysBefore.push({ start: ray.start, end: separationPoint });
+      raysAfter.push({ start: separationPoint, end: ray.end });
+    });
+
+    return { raysBefore, raysAfter };
+  }
+
+  public isEnabled() {
+    return this.enabled;
+  }
+
+  public enable() {
+    this.enabled = true;
+  }
+
+  public disable() {
+    this.enabled = false;
+  }
+
+  public update(obstacles: Line[]) {
+    const { x, y, angle } = this.origin;
+    this.cast(x, y, angle);
+    this.readings = this.reader.read(this, obstacles);
+  }
+
+  private cast(x: number, y: number, angle: number) {
+    const start = { x, y };
     this.rays = [];
     for (let i = 0; i < this.rayCount; i++) {
       const percentage = this.rayCount === 1 ? 0.5 : i / (this.rayCount - 1);
@@ -60,7 +75,7 @@ class Sensor {
           this.raySpread / 2,
           -this.raySpread / 2,
           percentage
-        ) + this.rayOrigin.angle;
+        ) + angle;
       const end = {
         x: start.x - Math.sin(rayAngle) * this.rayLength,
         y: start.y - Math.cos(rayAngle) * this.rayLength,
@@ -69,34 +84,25 @@ class Sensor {
       this.rays.push({ start, end });
     }
   }
+}
 
-  public update(coords: Point, angle: number, obstacles: Line[]) {
-    const { x, y } = coords;
-    this.rayOrigin = { x, y, angle };
-    this.castRays();
-    this.readings = [];
-    for (let ray of this.rays) {
-      this.readings.push(this.getClosestReading(ray, obstacles));
-    }
+class SensorReader implements SensorReaderInterface {
+  public read(sensor: Sensor, obstacles: Line[]) {
+    return sensor.rays.map((ray) => this.getClosestReading(ray, obstacles));
   }
 
-  public draw(ctx: CanvasRenderingContext2D) {
-    this.rays.forEach((ray, i) => {
-      const end = this.readings[i]
-        ? { x: this.readings[i]!.x, y: this.readings[i]!.y }
-        : ray.end;
+  private getClosestReading(ray: Line, obstacles: Line[]) {
+    const touches: Reading[] = [];
 
-      ctx.strokeStyle = "yellow";
-      ctx.beginPath();
-      ctx.moveTo(ray.start.x, ray.start.y);
-      ctx.lineTo(end.x, end.y);
-      ctx.stroke();
+    for (let obstacle of obstacles) {
+      const touch = getIntersection(ray, obstacle);
+      if (touch) touches.push(touch);
+    }
 
-      ctx.strokeStyle = "black";
-      ctx.beginPath();
-      ctx.moveTo(end.x, end.y);
-      ctx.lineTo(ray.end.x, ray.end.y);
-      ctx.stroke();
-    });
+    if (touches.length === 0) return null;
+
+    const offsets = touches.map((touch) => touch.offset);
+    const minOffset = Math.min(...offsets);
+    return <Reading>touches.find((t) => t.offset === minOffset);
   }
 }
