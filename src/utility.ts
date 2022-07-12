@@ -1,32 +1,29 @@
-interface Point {
-  x: number;
-  y: number;
+import { Polygon, Line, Intersection } from "./types";
+
+export function getRandomNumber(min: number, max: number) {
+  return Math.floor(linearInterpolation(min, max + 1, Math.random()));
 }
 
-interface Line {
-  start: Point;
-  end: Point;
+export function getRandomElement<T>(arr: T[]) {
+  return arr.length ? arr[getRandomNumber(0, arr.length - 1)] : undefined;
 }
 
-interface Animated {
-  update(arg: any): void;
+export function getRandomEnum<T>(someEnum: T) {
+  const enumValues = Object.keys(someEnum)
+    .map((n) => Number.parseInt(n))
+    .filter((n) => !Number.isNaN(n)) as unknown as T[keyof T][];
+  return getRandomElement(enumValues);
 }
 
-type Polygon = Line[];
-
-function getRandomElement(arr: any[]) {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
-
-function linearInterpolation(start: number, end: number, t: number) {
+export function linearInterpolation(start: number, end: number, t: number) {
   return start + (end - start) * t;
 }
 
-function clamp(num: number, min: number, max: number) {
+export function clamp(num: number, min: number, max: number) {
   return Math.min(Math.max(num, min), max);
 }
 
-function getIntersection(A: Line, B: Line) {
+export function getIntersection(A: Line, B: Line): Intersection | null {
   const numeratorT =
     (B.end.x - B.start.x) * (A.start.y - B.start.y) -
     (B.end.y - B.start.y) * (A.start.x - B.start.x);
@@ -51,7 +48,7 @@ function getIntersection(A: Line, B: Line) {
   };
 }
 
-function polysIntersect(polyA: Polygon, polyB: Polygon) {
+export function polysIntersect(polyA: Polygon, polyB: Polygon) {
   for (let lineA of polyA) {
     for (let lineB of polyB) {
       if (getIntersection(lineA, lineB)) return true;

@@ -1,15 +1,12 @@
-interface Directions {
-  forward: boolean;
-  backwards: boolean;
-  left: boolean;
-  right: boolean;
-}
+import { Line, Polygon, Color } from "./types";
+import { polysIntersect, getRandomEnum } from "./utility";
+import Sensor from "./Sensor";
+import NeuralNetwork from "./NeuralNetwork";
+import Shape, { Rectangle } from "./Shape";
+import Controls, { KeyboardControls } from "./Controls";
 
-interface Car {
+export interface Car {
   move(): void;
-}
-interface hasControls {
-  controls: Controls;
 }
 
 interface hasBrain {
@@ -19,44 +16,64 @@ interface hasBrain {
 interface hasSensor {
   sensor: Sensor;
 }
-abstract class Car implements Car, Animated {
+
+export function hasSensor(obj: any): obj is hasSensor {
+  return "sensor" in obj && obj.sensor instanceof Sensor;
+}
+
+export abstract class Car implements Car {
   private speed = 0;
-  private acceleration = 0.1;
-  private friction = 0.05;
-  public angle = 0;
-  private rotationSpeed = 0.01;
-  public abstract maxSpeed: number;
-  public isMoving: Directions = {
+  protected angle = 0;
+  public polygon: Polygon = [];
+  protected isMoving = {
     forward: false,
     backwards: false,
     left: false,
     right: false,
   };
-  public polygon: Polygon = [];
 
   constructor(
-    public x: number,
-    public y: number,
-    public color: string,
-    public shape: Shape
+    protected _x = 0,
+    protected _y = 0,
+    protected _color: Color = getRandomEnum(Color)!,
+    protected shape: Shape = new Rectangle(60, 100),
+    protected maxSpeed = 2,
+    private acceleration = 0.1,
+    private friction = 0.05,
+    private rotationSpeed = 0.01
   ) {
-    this.x = x;
-    this.y = y;
-    this.color = color;
+    this._x = _x;
+    this._y = _y;
+    this._color = _color;
     this.shape = shape;
+    this.maxSpeed = maxSpeed;
+    this.acceleration = acceleration;
+    this.friction = friction;
+    this.rotationSpeed = rotationSpeed;
   }
 
-  public abstract update(obstacles: Line[]): void;
+  public abstract update(): void;
   protected abstract updateMovingDirection(): void;
 
+  public get x() {
+    return this._x;
+  }
+
+  public get y() {
+    return this._y;
+  }
+
+  public get color() {
+    return this._color;
+  }
+
   public move() {
-    this.updateMovingDirection();
     this.applyAcceleration();
     this.applySpeedLimits();
     this.applyFriction();
     this.applyRotation();
-    this.y -= Math.cos(this.angle) * this.speed;
-    this.x -= Math.sin(this.angle) * this.speed;
+    this._y -= Math.cos(this.angle) * this.speed;
+    this._x -= Math.sin(this.angle) * this.speed;
   }
 
   private applyAcceleration() {
@@ -85,29 +102,37 @@ abstract class Car implements Car, Animated {
 }
 
 abstract class DamageableCar extends Car {
-  public isDamaged = false;
-  public damagedColor = "gray";
+  protected isDamaged = false;
+  protected damagedColor = Color.DimGray;
   public assessDamage(obstacles: Line[]) {
     if (polysIntersect(this.polygon, obstacles)) {
       this.isDamaged = true;
-      this.color = this.damagedColor;
+      this._color = this.damagedColor;
     }
   }
 }
 
-class KeyboardCar extends DamageableCar implements hasControls {
-  public maxSpeed = 3;
-  public controls: Controls = new KeyboardControls();
-
-  constructor(x: number, y: number, color: string, shape: Shape) {
-    super(x, y, color, shape);
+export class KeyboardCar extends DamageableCar {
+  constructor(
+    x?: number,
+    y?: number,
+    color?: Color,
+    shape?: Shape,
+    private controls: Controls = new KeyboardControls(),
+    maxSpeed = 3,
+    acceleration?: number,
+    friction?: number,
+    rotationSpeed?: number
+  ) {
+    super(x, y, color, shape, maxSpeed, acceleration, friction, rotationSpeed);
   }
 
-  public update(obstacles: Line[]) {
+  public update(obstacles: Line[] = []) {
+    const { _x: x, _y: y, angle } = this;
     if (this.isDamaged) return;
-
+    this.updateMovingDirection();
     this.move();
-    this.polygon = this.shape.create(this);
+    this.polygon = this.shape.create(x, y, angle);
     this.assessDamage(obstacles);
   }
 
@@ -119,53 +144,68 @@ class KeyboardCar extends DamageableCar implements hasControls {
   }
 }
 
-class AICar extends DamageableCar implements hasBrain, hasSensor {
-  public maxSpeed = 2.5;
-  public brain: NeuralNetwork;
-  public sensor: Sensor;
+export class AICar extends DamageableCar implements hasBrain, hasSensor {
+  public brain = new NeuralNetwork([this._sensor.rayCount, 6, 4]);
 
   constructor(
-    x: number,
-    y: number,
-    color: string,
-    shape: Shape,
-    rayCount: number
+    x?: number,
+    y?: number,
+    color?: Color,
+    shape?: Shape,
+    private _sensor = new Sensor(Math.PI / 2, 5, 300),
+    maxSpeed = 2.5,
+    acceleration?: number,
+    friction?: number,
+    rotationSpeed?: number
   ) {
-    super(x, y, color, shape);
-    this.brain = new NeuralNetwork([rayCount, 6, 4]);
-    this.sensor = new Sensor(Math.PI / 2, rayCount, 300, this);
+    super(x, y, color, shape, maxSpeed, acceleration, friction, rotationSpeed);
   }
 
-  public update(obstacles: Line[]) {
+  public get sensor(): Sensor {
+    return this._sensor;
+  }
+
+  public update(obstacles: Line[] = []) {
+    const { _x: x, _y: y, angle } = this;
     if (this.isDamaged) return;
-
+    this.updateMovingDirection();
     this.move();
-    this.polygon = this.shape.create(this);
+    this.polygon = this.shape.create(x, y, angle);
     this.assessDamage(obstacles);
-
-    this.sensor.update(obstacles);
-    const offsets = this.sensor.getOffsets().map((offset) => 1 - offset);
-    NeuralNetwork.feedForward(offsets, this.brain);
+    this._sensor.update(x, y, angle, obstacles);
+    const reversedOffsets = this._sensor.offsets.map(
+      (offset) => 1 - (offset || 1)
+    );
+    NeuralNetwork.feedForward(this.brain, reversedOffsets);
   }
 
   protected updateMovingDirection() {
-    this.isMoving.forward = this.brain.outputs[0] === 1;
-    this.isMoving.backwards = this.brain.outputs[1] === 1;
-    this.isMoving.left = this.brain.outputs[2] === 1;
-    this.isMoving.right = this.brain.outputs[3] === 1;
+    this.isMoving.forward = Boolean(this.brain.outputs[0]);
+    this.isMoving.backwards = Boolean(this.brain.outputs[1]);
+    this.isMoving.left = Boolean(this.brain.outputs[2]);
+    this.isMoving.right = Boolean(this.brain.outputs[3]);
   }
 }
 
-class TrafficCar extends Car {
-  public maxSpeed = 2;
-
-  constructor(x: number, y: number, color: string, shape: Shape) {
-    super(x, y, color, shape);
+export class TrafficCar extends Car {
+  constructor(
+    x?: number,
+    y?: number,
+    color?: Color,
+    shape?: Shape,
+    maxSpeed = 2,
+    acceleration?: number,
+    friction?: number,
+    rotationSpeed?: number
+  ) {
+    super(x, y, color, shape, maxSpeed, acceleration, friction, rotationSpeed);
   }
 
   public update() {
+    const { _x: x, _y: y, angle } = this;
+    this.updateMovingDirection();
     this.move();
-    this.polygon = this.shape.create(this);
+    this.polygon = this.shape.create(x, y, angle);
   }
 
   protected updateMovingDirection() {

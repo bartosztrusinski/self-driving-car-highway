@@ -1,39 +1,40 @@
 body {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  align-items: center;
+  gap: 1rem;
   margin: 0;
   overflow: hidden;
   background-color: rgb(94, 94, 94);
-
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  align-items: center;
-  gap: 10px;
 }
 
 #canvas {
+  justify-self: end;
   background-color: rgb(207, 207, 207);
   outline: none;
-
-  justify-self: end;
 }
 
-div {
+.btn-group {
   justify-self: start;
-
   display: grid;
   grid-template-columns: 1fr;
-  gap: 10px;
+  gap: 1rem;
+  grid-template-rows: 1fr 1fr;
 }
 
 #save,
 #discard {
+  font-size: 2rem;
   background-color: rgb(255, 255, 255);
-  padding: 10px;
-  border-radius: 5px;
+  padding: 2em;
+  border-radius: 0.4rem;
   border: none;
   outline: none;
   cursor: pointer;
+  transition: 0.1s ease-in-out;
 }
 
-#save:hover #discard:hover {
-  background-color: rgb(207, 207, 207);
+#save:hover,
+#discard:hover {
+  background-color: rgb(231, 231, 231);
 }

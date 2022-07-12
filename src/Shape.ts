@@ -1,34 +1,34 @@
-interface Shape {
-  create(obj: { x: number; y: number; angle: number }): Line[];
+import { Line, Point } from "./types";
+
+export default interface Shape {
+  create(x: number, y: number, shapeAngle: number): Line[];
 }
 
-class Rectangle implements Shape {
-  width: number;
-  height: number;
-  constructor(width: number, height: number) {
+export class Rectangle implements Shape {
+  constructor(private width: number, private height: number) {
     this.width = width;
     this.height = height;
   }
 
-  create(obj: { x: number; y: number; angle: number }): Line[] {
+  public create(x: number, y: number, rectAngle: number): Line[] {
     const radius = Math.hypot(this.width, this.height) / 2;
-    const alpha = Math.atan2(this.width, this.height);
+    const radiusAngle = Math.atan2(this.width, this.height);
 
     const topLeft: Point = {
-      x: obj.x - radius * Math.sin(obj.angle + alpha),
-      y: obj.y - radius * Math.cos(obj.angle + alpha),
+      x: x - radius * Math.sin(rectAngle + radiusAngle),
+      y: y - radius * Math.cos(rectAngle + radiusAngle),
     };
     const topRight: Point = {
-      x: obj.x - radius * Math.sin(obj.angle - alpha),
-      y: obj.y - radius * Math.cos(obj.angle - alpha),
+      x: x - radius * Math.sin(rectAngle - radiusAngle),
+      y: y - radius * Math.cos(rectAngle - radiusAngle),
     };
     const bottomLeft: Point = {
-      x: obj.x - radius * Math.sin(Math.PI + obj.angle - alpha),
-      y: obj.y - radius * Math.cos(Math.PI + obj.angle - alpha),
+      x: x - radius * Math.sin(Math.PI + rectAngle - radiusAngle),
+      y: y - radius * Math.cos(Math.PI + rectAngle - radiusAngle),
     };
     const bottomRight: Point = {
-      x: obj.x - radius * Math.sin(Math.PI + obj.angle + alpha),
-      y: obj.y - radius * Math.cos(Math.PI + obj.angle + alpha),
+      x: x - radius * Math.sin(Math.PI + rectAngle + radiusAngle),
+      y: y - radius * Math.cos(Math.PI + rectAngle + radiusAngle),
     };
 
     return [

@@ -1,108 +1,116 @@
-interface Reading {
-  x: number;
-  y: number;
-  offset: number;
+import { Line, Intersection } from "./types";
+import { linearInterpolation, getIntersection } from "./utility";
+
+type Reading = Intersection;
+
+interface ReaderInterface {
+  read(rays: Line[], target: any): void;
 }
 
-interface SensorReaderInterface {
-  read(sensor: Sensor, obstacle: any): void;
-}
-
-class Sensor implements Animated {
-  public readings: (Reading | null)[] = [];
-  public rays: Line[] = [];
-  private reader = new SensorReader();
-  private enabled = false;
+export default class Sensor {
+  private _rays: Line[] = [];
+  private obstacleReader = new TargetReader();
 
   constructor(
     private raySpread: number,
-    private rayCount: number,
-    private rayLength: number,
-    private origin: { x: number; y: number; angle: number }
+    private _rayCount: number,
+    private rayLength: number
   ) {
     this.raySpread = raySpread;
-    this.rayCount = rayCount;
+    this._rayCount = _rayCount;
     this.rayLength = rayLength;
   }
 
-  public getOffsets() {
-    return this.readings.map((reading) =>
-      reading === null ? 1 : reading.offset
+  public clone() {
+    return new Sensor(this.raySpread, this._rayCount, this.rayLength);
+  }
+
+  public get rayCount() {
+    return this._rayCount;
+  }
+
+  public get readings() {
+    return [...this.obstacleReader.readings];
+  }
+
+  public get offsets() {
+    return [...this.obstacleReader.offsets];
+  }
+
+  public get rays(): Line[] {
+    return this._rays.map((ray, i) => {
+      const { x, y } = this.readings[i] || ray.end;
+      return { start: ray.start, end: { x, y } };
+    });
+  }
+
+  public get raysBehindObstacles(): Line[] {
+    return this._rays.map((ray, i) => {
+      const { x, y } = this.readings[i] || ray.end;
+      return { start: { x, y }, end: ray.end };
+    });
+  }
+
+  public update(x: number, y: number, angle: number, obstacles: Line[]) {
+    this.castRays(x, y, angle);
+    this.obstacleReader.read(this._rays, obstacles);
+  }
+
+  private castRays(x: number, y: number, sensorAngle: number) {
+    const start = { x, y };
+    this._rays = [];
+    for (let i = 0; i < this._rayCount; i++) {
+      const angle = sensorAngle + this.getRayAngle(i);
+      const end = {
+        x: start.x - Math.sin(angle) * this.rayLength,
+        y: start.y - Math.cos(angle) * this.rayLength,
+      };
+      this._rays.push({ start, end });
+    }
+  }
+
+  private getRayAngle(rayIndex: number) {
+    return linearInterpolation(
+      this.raySpread / 2,
+      -this.raySpread / 2,
+      this.getSpreadPercentage(rayIndex)
     );
   }
 
-  public getRaysSeparatedByOffsets() {
-    const raysBefore: Line[] = [],
-      raysAfter: Line[] = [];
-
-    this.rays.forEach((ray, i) => {
-      const separationPoint = this.readings[i]
-        ? { x: this.readings[i]!.x, y: this.readings[i]!.y }
-        : ray.end;
-
-      raysBefore.push({ start: ray.start, end: separationPoint });
-      raysAfter.push({ start: separationPoint, end: ray.end });
-    });
-
-    return { raysBefore, raysAfter };
-  }
-
-  public isEnabled() {
-    return this.enabled;
-  }
-
-  public enable() {
-    this.enabled = true;
-  }
-
-  public disable() {
-    this.enabled = false;
-  }
-
-  public update(obstacles: Line[]) {
-    const { x, y, angle } = this.origin;
-    this.cast(x, y, angle);
-    this.readings = this.reader.read(this, obstacles);
-  }
-
-  private cast(x: number, y: number, angle: number) {
-    const start = { x, y };
-    this.rays = [];
-    for (let i = 0; i < this.rayCount; i++) {
-      const percentage = this.rayCount === 1 ? 0.5 : i / (this.rayCount - 1);
-      const rayAngle =
-        linearInterpolation(
-          this.raySpread / 2,
-          -this.raySpread / 2,
-          percentage
-        ) + angle;
-      const end = {
-        x: start.x - Math.sin(rayAngle) * this.rayLength,
-        y: start.y - Math.cos(rayAngle) * this.rayLength,
-      };
-
-      this.rays.push({ start, end });
-    }
+  private getSpreadPercentage(rayIndex: number) {
+    return this._rayCount === 1 ? 0.5 : rayIndex / (this._rayCount - 1);
   }
 }
 
-class SensorReader implements SensorReaderInterface {
-  public read(sensor: Sensor, obstacles: Line[]) {
-    return sensor.rays.map((ray) => this.getClosestReading(ray, obstacles));
+class TargetReader implements ReaderInterface {
+  private _readings: (Reading | null)[] = [];
+
+  public get readings() {
+    return [...this._readings];
   }
 
-  private getClosestReading(ray: Line, obstacles: Line[]) {
-    const touches: Reading[] = [];
+  public get offsets() {
+    return this._readings.map((reading) => reading?.offset || null);
+  }
 
-    for (let obstacle of obstacles) {
-      const touch = getIntersection(ray, obstacle);
-      if (touch) touches.push(touch);
-    }
+  public read(rays: Line[], targets: Line[]) {
+    this._readings = rays.map((ray) => this.getReading(ray, targets));
+  }
 
-    if (touches.length === 0) return null;
+  private getReading(ray: Line, targets: Line[]): Reading | null {
+    const intersections = this.getIntersections(ray, targets);
+    return intersections.length > 0
+      ? this.getClosestIntersection(intersections)
+      : null;
+  }
 
-    const offsets = touches.map((touch) => touch.offset);
-    const minOffset = Math.min(...offsets);
-    return <Reading>touches.find((t) => t.offset === minOffset);
+  private getClosestIntersection(intersections: Intersection[]) {
+    return intersections.reduce((acc, i) => (i.offset < acc.offset ? i : acc));
+  }
+
+  private getIntersections(ray: Line, targets: Line[]) {
+    return targets
+      .map((target) => getIntersection(ray, target))
+      .filter((i): i is Intersection => i !== null);
   }
 }

@@ -1,59 +1,71 @@
-class Road {
+import { Line } from "./types";
+import { clamp, linearInterpolation } from "./utility";
+
+export default class Road {
   private left: number;
   private right: number;
   private top: number;
   private bottom: number;
-  public borders: Line[] = [];
-  public lines: Line[] = [];
+  private _borders: Line[] = [];
+  private _lines: Line[] = [];
 
   constructor(
     horizontalCenter: number,
     private width: number,
-    private laneCount: number
+    private _laneCount: number
   ) {
     const infinity = 1000000;
     this.top = -infinity;
     this.bottom = infinity;
     this.left = horizontalCenter - width / 2;
     this.right = horizontalCenter + width / 2;
-    this.laneCount = laneCount;
+    this._laneCount = _laneCount;
 
-    this.setBorders();
-    this.setLines();
+    this.initBorders();
+    this.initLines();
   }
 
-  public getLaneCount() {
-    return this.laneCount;
+  public get borders() {
+    return [...this._borders];
+  }
+
+  public get lines() {
+    return [...this._lines];
+  }
+
+  public get laneCount() {
+    return this._laneCount;
   }
 
   public getLaneCenter(laneIndex: number) {
-    laneIndex = clamp(laneIndex, 0, this.laneCount - 1);
-
     const laneWidth = this.width / this.laneCount;
+    laneIndex = clamp(laneIndex, 0, this.laneCount - 1);
     return (
       linearInterpolation(this.left, this.right, laneIndex / this.laneCount) +
       laneWidth / 2
     );
   }
 
-  private setBorders() {
+  public getMiddleLaneCenter() {
+    return this.getLaneCenter(Math.floor(this.laneCount / 2));
+  }
+
+  private initBorders() {
     const leftBorder: Line = {
       start: { x: this.left, y: this.top },
       end: { x: this.left, y: this.bottom },
     };
-    const bottomBorder: Line = {
+    const rightBorder: Line = {
       start: { x: this.right, y: this.top },
       end: { x: this.right, y: this.bottom },
     };
-
-    this.borders = [leftBorder, bottomBorder];
+    this._borders = [leftBorder, rightBorder];
   }
 
-  private setLines() {
-    this.lines = [];
+  private initLines() {
     for (let i = 1; i < this.laneCount; i++) {
       const x = linearInterpolation(this.left, this.right, i / this.laneCount);
-      this.lines.push({
+      this._lines.push({
         start: { x, y: this.bottom },
         end: { x, y: this.top },
       });
