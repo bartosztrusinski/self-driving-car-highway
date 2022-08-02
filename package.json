@@ -1,15 +1,24 @@
 {
-  "name": "simulation-car-on-highway-machine-learning",
-  "version": "1.1.0",
-  "description": "A cars simulation on highway using canvas. There's traffic, keyboard controlled car and parallelized cars with neural network",
+  "name": "self-learning-car-on-highway",
   "author": "Bartosz Trusiński",
   "license": "ISC",
   "scripts": {
     "build:dev": "webpack",
     "build:prod": "cross-env NODE_ENV=production webpack",
-    "watch": "webpack --watch"
+    "watch": "webpack --watch",
+    "lint": "eslint ./src --ignore-path .gitignore --ext .js,.ts",
+    "prettier": "prettier . --ignore-path .gitignore --check",
+    "lint:fix": "npm run lint -- --fix",
+    "prettier:fix": "npm run prettier -- --write",
+    "format": "npm run prettier:fix && npm run lint:fix"
   },
   "devDependencies": {
+    "eslint": "^8.19.0",
+    "@typescript-eslint/eslint-plugin": "^5.30.6",
+    "@typescript-eslint/parser": "^5.30.6",
+    "prettier": "2.7.1",
+    "eslint-config-prettier": "^8.5.0",
+    "eslint-plugin-prettier": "^4.2.1",
     "cross-env": "^7.0.3",
     "ts-loader": "^9.3.1",
     "typescript": "^4.7.4",
