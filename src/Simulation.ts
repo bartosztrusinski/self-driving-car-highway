@@ -1,15 +1,15 @@
-import { Car, AICar, TrafficCar, KeyboardCar, hasSensor } from "./Car";
-import Road from "./Road";
-import Sensor from "./Sensor";
-import UIDataStore from "./DataStore";
-import Controls from "./Controls";
-import NeuralNetwork from "./NeuralNetwork";
-import Shape from "./Shape";
-import Canvas, { CtxConfig } from "./Canvas";
-import { Line, Color } from "./types";
-import { getRandomNumber } from "./utility";
+import { Car, AICar, TrafficCar, KeyboardCar } from './Car';
+import Road from './Road';
+import Sensor from './Sensor';
+import UIDataStore from './DataStore';
+import Controls from './Controls';
+import NeuralNetwork from './NeuralNetwork';
+import Shape from './Shape';
+import Canvas, { CtxConfig } from './Canvas';
+import { Line, Color } from './types';
+import { getRandomNumber, hasSensor } from './utility';
 
-interface CarConfig {
+type CarConfig = {
   x: number;
   y: number;
   shape: Shape;
@@ -20,15 +20,13 @@ interface CarConfig {
   rotationSpeed: number;
   sensor: Sensor;
   controls: Controls;
-}
+};
 
 export default class Simulation {
   public carConfig: Partial<CarConfig> = {};
-  private road: Road;
   private traffic: TrafficCar[] = [];
   private AICars: AICar[] = [];
   private keyboardCar?: KeyboardCar;
-  private mutationRate = 0.2;
   private canvas: Canvas;
   private brainStore: UIDataStore<NeuralNetwork>;
   private startTime: number | null = null;
@@ -37,41 +35,40 @@ export default class Simulation {
     canvasElement: HTMLCanvasElement,
     saveBtn: HTMLButtonElement,
     discardBtn: HTMLButtonElement,
-    road: Road,
-    mutationRate?: number
+    private road: Road,
+    private mutationRate = 0.2
   ) {
     this.canvas = new Canvas(canvasElement);
     this.brainStore = new UIDataStore(saveBtn, discardBtn);
-    this.road = road;
-    this.mutationRate = mutationRate || this.mutationRate;
   }
 
   public getRoadLaneCenter(laneIndex: number) {
     return this.road.getLaneCenter(laneIndex);
   }
 
-  public createKeyboardCar() {
+  public createKeyboardControlledCar() {
     const {
       x,
       y,
       color,
       shape,
-      controls,
       maxSpeed,
       acceleration,
       friction,
       rotationSpeed,
+      controls,
     } = this.carConfig;
+
     this.keyboardCar = new KeyboardCar(
       x,
       y,
       color,
       shape,
-      controls,
       maxSpeed,
       acceleration,
       friction,
-      rotationSpeed
+      rotationSpeed,
+      controls
     );
   }
 
@@ -113,11 +110,11 @@ export default class Simulation {
           y,
           color,
           shape,
-          sensor?.clone(),
           maxSpeed,
           acceleration,
           friction,
-          rotationSpeed
+          rotationSpeed,
+          sensor?.clone()
         )
       );
     }
@@ -139,7 +136,7 @@ export default class Simulation {
 
   private animate = (timestamp: number) => {
     const bestAICar = this.getFarthestAICar();
-    const focusedCar = bestAICar || this.keyboardCar;
+    const focusedCar = bestAICar ?? this.keyboardCar;
     this.canvas.height = window.innerHeight;
     focusedCar
       ? this.setCameraOn(focusedCar)

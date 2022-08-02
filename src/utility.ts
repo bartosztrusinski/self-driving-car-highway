@@ -1,11 +1,15 @@
-import { Polygon, Line, Intersection } from "./types";
+import { Polygon, Line, Intersection } from './types';
+import { hasSensor } from './Car';
 
 export function getRandomNumber(min: number, max: number) {
   return Math.floor(linearInterpolation(min, max + 1, Math.random()));
 }
 
 export function getRandomElement<T>(arr: T[]) {
-  return arr.length ? arr[getRandomNumber(0, arr.length - 1)] : undefined;
+  if (arr.length === 0) {
+    throw new Error('Cannot get element from empty array');
+  }
+  return arr[getRandomNumber(0, arr.length - 1)];
 }
 
 export function getRandomEnum<T>(someEnum: T) {
@@ -49,10 +53,14 @@ export function getIntersection(A: Line, B: Line): Intersection | null {
 }
 
 export function polysIntersect(polyA: Polygon, polyB: Polygon) {
-  for (let lineA of polyA) {
-    for (let lineB of polyB) {
+  for (const lineA of polyA) {
+    for (const lineB of polyB) {
       if (getIntersection(lineA, lineB)) return true;
     }
   }
   return false;
+}
+
+export function hasSensor(obj: unknown): obj is hasSensor {
+  return (obj as hasSensor).sensor !== undefined;
 }

@@ -1,5 +1,5 @@
-import { Color, Line, Polygon } from "./types";
-import { LinesRenderer, PolygonRenderer } from "./Renderer";
+import { Color, Line, Polygon } from './types';
+import { LinesRenderer, PolygonRenderer } from './Renderer';
 
 export interface CtxConfig {
   lineWidth: number;
@@ -21,7 +21,7 @@ export default class Canvas {
 
   constructor(private canvas: HTMLCanvasElement) {
     this.canvas = canvas;
-    this.ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
+    this.ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
   }
 
   public get height() {
@@ -42,7 +42,7 @@ export default class Canvas {
 
   public configureContext(config: Partial<CtxConfig> = {}) {
     const configToUse = { ...this.defaultConfig, ...config };
-    this.ctx.lineWidth = config.lineWidth || 5;
+    this.ctx.lineWidth = configToUse.lineWidth;
     this.ctx.strokeStyle = Color[configToUse.color];
     this.ctx.fillStyle = Color[configToUse.color];
     this.ctx.setLineDash(configToUse.lineDash);

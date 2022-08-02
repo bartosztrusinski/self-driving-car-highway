@@ -1,30 +1,26 @@
-import { Line, Polygon, Color } from "./types";
-import { polysIntersect, getRandomEnum } from "./utility";
-import Sensor from "./Sensor";
-import NeuralNetwork from "./NeuralNetwork";
-import Shape, { Rectangle } from "./Shape";
-import Controls, { KeyboardControls } from "./Controls";
+import { Line, Polygon, Color } from './types';
+import { polysIntersect, getRandomEnum } from './utility';
+import Sensor from './Sensor';
+import NeuralNetwork from './NeuralNetwork';
+import Shape, { Rectangle } from './Shape';
+import Controls, { KeyboardControls } from './Controls';
 
 export interface Car {
   move(): void;
 }
 
-interface hasBrain {
+export interface hasBrain {
   brain: NeuralNetwork;
 }
 
-interface hasSensor {
+export interface hasSensor {
   sensor: Sensor;
 }
 
-export function hasSensor(obj: any): obj is hasSensor {
-  return "sensor" in obj && obj.sensor instanceof Sensor;
-}
-
 export abstract class Car implements Car {
+  public polygon: Polygon = [];
   private speed = 0;
   protected angle = 0;
-  public polygon: Polygon = [];
   protected isMoving = {
     forward: false,
     backwards: false,
@@ -35,22 +31,13 @@ export abstract class Car implements Car {
   constructor(
     protected _x = 0,
     protected _y = 0,
-    protected _color: Color = getRandomEnum(Color)!,
+    protected _color = getRandomEnum(Color),
     protected shape: Shape = new Rectangle(60, 100),
     protected maxSpeed = 2,
-    private acceleration = 0.1,
-    private friction = 0.05,
-    private rotationSpeed = 0.01
-  ) {
-    this._x = _x;
-    this._y = _y;
-    this._color = _color;
-    this.shape = shape;
-    this.maxSpeed = maxSpeed;
-    this.acceleration = acceleration;
-    this.friction = friction;
-    this.rotationSpeed = rotationSpeed;
-  }
+    protected acceleration = 0.1,
+    protected friction = 0.05,
+    protected rotationSpeed = 0.01
+  ) {}
 
   public abstract update(): void;
   protected abstract updateMovingDirection(): void;
@@ -93,7 +80,7 @@ export abstract class Car implements Car {
   }
 
   private applyRotation() {
-    if (this.speed != 0) {
+    if (this.speed !== 0) {
       const flipControls = this.speed < 0 ? -1 : 1;
       if (this.isMoving.left) this.angle += flipControls * this.rotationSpeed;
       if (this.isMoving.right) this.angle -= flipControls * this.rotationSpeed;
@@ -118,11 +105,11 @@ export class KeyboardCar extends DamageableCar {
     y?: number,
     color?: Color,
     shape?: Shape,
-    private controls: Controls = new KeyboardControls(),
     maxSpeed = 3,
     acceleration?: number,
     friction?: number,
-    rotationSpeed?: number
+    rotationSpeed?: number,
+    private controls: Controls = new KeyboardControls()
   ) {
     super(x, y, color, shape, maxSpeed, acceleration, friction, rotationSpeed);
   }
@@ -145,24 +132,20 @@ export class KeyboardCar extends DamageableCar {
 }
 
 export class AICar extends DamageableCar implements hasBrain, hasSensor {
-  public brain = new NeuralNetwork([this._sensor.rayCount, 6, 4]);
+  public brain = new NeuralNetwork([this.sensor.rayCount, 6, 4]);
 
   constructor(
     x?: number,
     y?: number,
     color?: Color,
     shape?: Shape,
-    private _sensor = new Sensor(Math.PI / 2, 5, 300),
     maxSpeed = 2.5,
     acceleration?: number,
     friction?: number,
-    rotationSpeed?: number
+    rotationSpeed?: number,
+    public sensor = new Sensor(Math.PI / 2, 5, 300)
   ) {
     super(x, y, color, shape, maxSpeed, acceleration, friction, rotationSpeed);
-  }
-
-  public get sensor(): Sensor {
-    return this._sensor;
   }
 
   public update(obstacles: Line[] = []) {
@@ -172,10 +155,8 @@ export class AICar extends DamageableCar implements hasBrain, hasSensor {
     this.move();
     this.polygon = this.shape.create(x, y, angle);
     this.assessDamage(obstacles);
-    this._sensor.update(x, y, angle, obstacles);
-    const reversedOffsets = this._sensor.offsets.map(
-      (offset) => 1 - (offset || 1)
-    );
+    this.sensor.update(x, y, angle, obstacles);
+    const reversedOffsets = this.sensor.offsets.map((offset) => 1 - offset);
     NeuralNetwork.feedForward(this.brain, reversedOffsets);
   }
 
@@ -188,24 +169,11 @@ export class AICar extends DamageableCar implements hasBrain, hasSensor {
 }
 
 export class TrafficCar extends Car {
-  constructor(
-    x?: number,
-    y?: number,
-    color?: Color,
-    shape?: Shape,
-    maxSpeed = 2,
-    acceleration?: number,
-    friction?: number,
-    rotationSpeed?: number
-  ) {
-    super(x, y, color, shape, maxSpeed, acceleration, friction, rotationSpeed);
-  }
-
   public update() {
-    const { _x: x, _y: y, angle } = this;
+    const { _x, _y, angle } = this;
     this.updateMovingDirection();
     this.move();
-    this.polygon = this.shape.create(x, y, angle);
+    this.polygon = this.shape.create(_x, _y, angle);
   }
 
   protected updateMovingDirection() {

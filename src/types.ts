@@ -1,18 +1,18 @@
-export interface Point {
+export type Point = {
   x: number;
   y: number;
-}
+};
 
-export interface Line {
+export type Line = {
   start: Point;
   end: Point;
-}
+};
 
-export interface Intersection {
+export type Intersection = {
   x: number;
   y: number;
   offset: number;
-}
+};
 
 export type Polygon = Line[];
 

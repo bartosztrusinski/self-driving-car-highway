@@ -13,19 +13,19 @@ export class KeyboardControls implements Controls {
   }
 
   public isUpPressed() {
-    return this.isKeyPressed("w") || this.isKeyPressed("ArrowUp");
+    return this.isKeyPressed('w') || this.isKeyPressed('ArrowUp');
   }
 
   public isDownPressed() {
-    return this.isKeyPressed("s") || this.isKeyPressed("ArrowDown");
+    return this.isKeyPressed('s') || this.isKeyPressed('ArrowDown');
   }
 
   public isLeftPressed() {
-    return this.isKeyPressed("a") || this.isKeyPressed("ArrowLeft");
+    return this.isKeyPressed('a') || this.isKeyPressed('ArrowLeft');
   }
 
   public isRightPressed() {
-    return this.isKeyPressed("d") || this.isKeyPressed("ArrowRight");
+    return this.isKeyPressed('d') || this.isKeyPressed('ArrowRight');
   }
 
   private isKeyPressed(key: string) {
@@ -33,10 +33,10 @@ export class KeyboardControls implements Controls {
   }
 
   private enableKeyboard() {
-    document.addEventListener("keydown", (e) => {
+    document.addEventListener('keydown', (e) => {
       this.keyboard[e.key] = true;
     });
-    document.addEventListener("keyup", (e) => {
+    document.addEventListener('keyup', (e) => {
       this.keyboard[e.key] = false;
     });
   }

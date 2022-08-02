@@ -1,4 +1,4 @@
-import { linearInterpolation } from "./utility";
+import { linearInterpolation } from './utility';
 
 export default class NeuralNetwork {
   public outputs: number[] = [];
@@ -18,7 +18,7 @@ export default class NeuralNetwork {
   }
 
   public static mutate(network: NeuralNetwork, mutationRate: number) {
-    for (let level of network.levels) {
+    for (const level of network.levels) {
       Level.mutate(level, mutationRate);
     }
   }

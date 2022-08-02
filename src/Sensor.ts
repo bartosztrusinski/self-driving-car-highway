@@ -1,10 +1,10 @@
-import { Line, Intersection } from "./types";
-import { linearInterpolation, getIntersection } from "./utility";
+import { Line, Intersection, Polygon } from './types';
+import { linearInterpolation, getIntersection } from './utility';
 
 type Reading = Intersection;
 
-interface ReaderInterface {
-  read(rays: Line[], target: any): void;
+interface Reader {
+  read(rays: Line[], target: (Line | Polygon)[]): void;
 }
 
 export default class Sensor {
@@ -15,11 +15,7 @@ export default class Sensor {
     private raySpread: number,
     private _rayCount: number,
     private rayLength: number
-  ) {
-    this.raySpread = raySpread;
-    this._rayCount = _rayCount;
-    this.rayLength = rayLength;
-  }
+  ) {}
 
   public clone() {
     return new Sensor(this.raySpread, this._rayCount, this.rayLength);
@@ -39,15 +35,15 @@ export default class Sensor {
 
   public get rays(): Line[] {
     return this._rays.map((ray, i) => {
-      const { x, y } = this.readings[i] || ray.end;
-      return { start: ray.start, end: { x, y } };
+      const end = this.readings[i] ?? ray.end;
+      return { start: ray.start, end };
     });
   }
 
   public get raysBehindObstacles(): Line[] {
     return this._rays.map((ray, i) => {
-      const { x, y } = this.readings[i] || ray.end;
-      return { start: { x, y }, end: ray.end };
+      const start = this.readings[i] ?? ray.end;
+      return { start, end: ray.end };
     });
   }
 
@@ -82,7 +78,7 @@ export default class Sensor {
   }
 }
 
-class TargetReader implements ReaderInterface {
+class TargetReader implements Reader {
   private _readings: (Reading | null)[] = [];
 
   public get readings() {
@@ -90,14 +86,14 @@ class TargetReader implements ReaderInterface {
   }
 
   public get offsets() {
-    return this._readings.map((reading) => reading?.offset || null);
+    return this._readings.map((reading) => reading?.offset ?? 0);
   }
 
   public read(rays: Line[], targets: Line[]) {
-    this._readings = rays.map((ray) => this.getReading(ray, targets));
+    this._readings = rays.map((ray) => this.readRay(ray, targets));
   }
 
-  private getReading(ray: Line, targets: Line[]): Reading | null {
+  private readRay(ray: Line, targets: Line[]): Reading | null {
     const intersections = this.getIntersections(ray, targets);
     return intersections.length > 0
       ? this.getClosestIntersection(intersections)

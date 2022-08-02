@@ -1,12 +1,12 @@
-import Simulation from "../src/Simulation";
-import Road from "../src/Road";
-import Sensor from "./Sensor";
-import { Rectangle } from "./Shape";
-import { Color } from "./types";
+import Simulation from '../src/Simulation';
+import Road from '../src/Road';
+import Sensor from './Sensor';
+import { Rectangle } from './Shape';
+import { Color } from './types';
 
-const canvas = document.querySelector("#canvas") as HTMLCanvasElement;
-const saveBtn = document.querySelector("#save") as HTMLButtonElement;
-const discardBtn = document.querySelector("#discard") as HTMLButtonElement;
+const canvas = document.querySelector('#canvas') as HTMLCanvasElement;
+const saveBtn = document.querySelector('#save') as HTMLButtonElement;
+const discardBtn = document.querySelector('#discard') as HTMLButtonElement;
 canvas.width = 400;
 
 const simulation = new Simulation(
@@ -30,6 +30,6 @@ simulation.carConfig = {
   color: Color.RebeccaPurple,
   shape: new Rectangle(60, 120),
 };
-simulation.createKeyboardCar();
+simulation.createKeyboardControlledCar();
 
 simulation.init();

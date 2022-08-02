@@ -1,14 +1,11 @@
-import { Line, Point } from "./types";
+import { Line, Point } from './types';
 
 export default interface Shape {
   create(x: number, y: number, shapeAngle: number): Line[];
 }
 
 export class Rectangle implements Shape {
-  constructor(private width: number, private height: number) {
-    this.width = width;
-    this.height = height;
-  }
+  constructor(private width: number, private height: number) {}
 
   public create(x: number, y: number, rectAngle: number): Line[] {
     const radius = Math.hypot(this.width, this.height) / 2;

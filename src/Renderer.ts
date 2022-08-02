@@ -1,4 +1,4 @@
-import { Line, Polygon } from "./types";
+import { Line, Polygon } from './types';
 
 interface Renderer<T> {
   render(ctx: CanvasRenderingContext2D, object: T): void;
@@ -6,7 +6,7 @@ interface Renderer<T> {
 
 export class LinesRenderer implements Renderer<Line[]> {
   public render(ctx: CanvasRenderingContext2D, lines: Line[]) {
-    for (let line of lines) {
+    for (const line of lines) {
       ctx.beginPath();
       ctx.moveTo(line.start.x, line.start.y);
       ctx.lineTo(line.end.x, line.end.y);

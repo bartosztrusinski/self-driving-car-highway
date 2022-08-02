@@ -1,11 +1,13 @@
-import { Line } from "./types";
-import { clamp, linearInterpolation } from "./utility";
+import { Line } from './types';
+import { clamp, linearInterpolation } from './utility';
+
+const ROAD_LENGTH = 2000000;
 
 export default class Road {
+  private top = -ROAD_LENGTH / 2;
+  private bottom = ROAD_LENGTH / 2;
   private left: number;
   private right: number;
-  private top: number;
-  private bottom: number;
   private _borders: Line[] = [];
   private _lines: Line[] = [];
 
@@ -14,13 +16,8 @@ export default class Road {
     private width: number,
     private _laneCount: number
   ) {
-    const infinity = 1000000;
-    this.top = -infinity;
-    this.bottom = infinity;
     this.left = horizontalCenter - width / 2;
     this.right = horizontalCenter + width / 2;
-    this._laneCount = _laneCount;
-
     this.initBorders();
     this.initLines();
   }

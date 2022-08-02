@@ -21,11 +21,11 @@ export default class UIDataStore<T> {
     saveBtn: HTMLButtonElement,
     discardBtn: HTMLButtonElement
   ) {
-    saveBtn.addEventListener("click", () => {
+    saveBtn.addEventListener('click', () => {
       this.save();
     });
 
-    discardBtn.addEventListener("click", () => {
+    discardBtn.addEventListener('click', () => {
       this.discard();
     });
   }
