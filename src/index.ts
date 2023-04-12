@@ -23,7 +23,7 @@ simulation.carConfig = {
   color: Color.Orange,
   sensor: new Sensor(Math.PI / 2, 7, 300),
 };
-simulation.parallelizeAICars(300);
+simulation.parallelizeAICars(200);
 
 simulation.carConfig = {
   x: simulation.getRoadLaneCenter(2),
